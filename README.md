@@ -12,7 +12,7 @@ The program will check each Steam ID from your `targets.txt` file. If an ID is a
 - **Target generator**: Generates thousands of 3c/3l/4c/4l usernames in `targets.txt`.
   
 ## Download 
-get the exe from the release page: https://github.com/evangelions/Vsteam/releases/tag/v1.1 
+get the win64 folder from the [release](https://github.com/evangelions/Vsteam/releases/tag/v1.4) page.
 
 ## Usage
 
