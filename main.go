@@ -26,13 +26,51 @@ var (
     White   = "\033[97m"
 )
 
-// Your single rotating proxy
-const proxyURL = ""
+type Checker struct {
+    proxies      []string
+    currentProxy int
+    mu           sync.Mutex
+    hasProxy     bool
+}
 
-func checkID(id string) bool {
-    client := resty.New().
-        SetTimeout(10 * time.Second).
-        SetProxy(proxyURL)
+func NewChecker() *Checker {
+    proxies, err := loadProxies("proxy.txt")
+    if err != nil {
+        fmt.Println(Yellow + "No proxy detected." + Reset)
+        return &Checker{hasProxy: false}
+    }
+    if len(proxies) == 0 {
+        fmt.Println(Yellow + "No proxy detected." + Reset)
+        return &Checker{hasProxy: false}
+    }
+
+    // Shuffle for better rotation
+    rand.Shuffle(len(proxies), func(i, j int) { proxies[i], proxies[j] = proxies[j], proxies[i] })
+    fmt.Printf(Green+"Proxy connected (%d loaded)\n"+Reset, len(proxies))
+    return &Checker{
+        proxies:  proxies,
+        hasProxy: true,
+    }
+}
+
+func (c *Checker) getNextProxy() string {
+    if !c.hasProxy || len(c.proxies) == 0 {
+        return ""
+    }
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    proxy := c.proxies[c.currentProxy]
+    c.currentProxy = (c.currentProxy + 1) % len(c.proxies)
+    return proxy
+}
+
+func (c *Checker) checkID(id string) bool {
+    client := resty.New().SetTimeout(10 * time.Second)
+
+    proxy := c.getNextProxy()
+    if proxy != "" {
+        client.SetProxy(proxy)
+    }
 
     url := "https://steamcommunity.com/id/" + id
     resp, err := client.R().Get(url)
@@ -43,6 +81,27 @@ func checkID(id string) bool {
 
     body := resp.String()
     return !strings.Contains(body, "The specified profile could not be found.")
+}
+
+func loadProxies(filename string) ([]string, error) {
+    file, err := os.Open(filename)
+    if os.IsNotExist(err) {
+        return nil, nil
+    }
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
+
+    var proxies []string
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan() {
+        line := strings.TrimSpace(scanner.Text())
+        if line != "" && strings.HasPrefix(strings.ToLower(line), "http") {
+            proxies = append(proxies, line)
+        }
+    }
+    return proxies, scanner.Err()
 }
 
 func pauseTerminal() {
@@ -126,6 +185,7 @@ func showSplash() {
                                                                                                                         
 ------------------------------------------------------------------------------------------------------------------------` + Green + `
 STEAM ID AVAILABILITY CHECKER — Template by yTax - modified by v@maakima
+Optional proxy support: place proxy.txt in the same folder (one HTTP proxy per line, format: http://user:pass@host:port)
 ` + Red + `
 ------------------------------------------------------------------------------------------------------------------------` + Reset)
 }
@@ -161,6 +221,8 @@ func generateRandomIDs() {
 
 func main() {
     showSplash()
+
+    checker := NewChecker()
 
     sessions, latestSession := getAllSessions()
     fmt.Println(Cyan + "\n-> Existing sessions:" + Reset)
@@ -261,11 +323,10 @@ func main() {
             threads = t
         }
     }
-    fmt.Printf(Cyan+"Using %d threads with rotating residential proxy\n"+Reset, threads)
+    fmt.Printf(Cyan+"Using %d threads\n"+Reset, threads)
 
     fmt.Println(Cyan + "\nChecking Steam IDs...\n" + Reset)
 
-    // Worker pool
     jobs := make(chan int, len(ids)-progress)
     var wg sync.WaitGroup
 
@@ -275,14 +336,13 @@ func main() {
             defer wg.Done()
             for i := range jobs {
                 id := ids[i]
-                if !checkID(id) {
+                if !checker.checkID(id) {
                     fmt.Printf(Green+"Available: %s\n"+Reset, id)
                     file.WriteString(id + "\n")
                 } else {
                     fmt.Printf(Red+"Not available: %s\n"+Reset, id)
                 }
 
-                // Update progress
                 newProgress := i + 1
                 if err := updateProgress(targetsPath, newProgress, ids); err != nil {
                     fmt.Printf(Yellow+"Failed to update progress: %v\n"+Reset, err)
@@ -291,7 +351,6 @@ func main() {
         }()
     }
 
-    // Send remaining jobs
     for i := progress; i < len(ids); i++ {
         jobs <- i
     }
