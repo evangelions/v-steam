@@ -126,7 +126,6 @@ func showSplash() {
                                                                                                                         
 ------------------------------------------------------------------------------------------------------------------------` + Green + `
 STEAM ID AVAILABILITY CHECKER — Template by yTax - modified by v@maakima
-Using rotating residential proxy via DataImpulse
 ` + Red + `
 ------------------------------------------------------------------------------------------------------------------------` + Reset)
 }
