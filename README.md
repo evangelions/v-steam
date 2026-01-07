@@ -1,5 +1,5 @@
 
-# Steam ID Checker
+# Steam URL Checker
 
 This is a cmd tool written in Go that allows you to check for thousands of available Steam IDs.
 With This tool you can check all usernames from the `targets.txt` file.. If a username is available, it will be saved in the `output.txt` file under the sessions folder. This tool will also track progress, so you can stop and resume your session at any time.
