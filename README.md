@@ -6,7 +6,7 @@ With This tool you can check all usernames from the `targets.txt` file.. If a us
 
 ## Features
 
-- **Check Steam ID availability**: Check if a Steam ID is available.
+- **Check Steam URL availability**: Check if a Steam URL is available.
 - **Session management**: Create a new session or resume an existing one.
 - **Progress tracking**: Pick up where you left off in case of interruptions.
 - **Target generator**: Generates thousands of 3c/3l/4c/4l usernames in `targets.txt`.
